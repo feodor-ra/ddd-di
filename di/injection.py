@@ -41,8 +41,11 @@ class Module(Generic[M, B]):
         self.injecting = (module, ) + other
 
     def __call__(self, fn: Function[B, P, T]) -> Callable[P, T]:
+        if getattr(fn, '__bind__', False):
+            raise RuntimeError(f'{fn.__name__} already has injected')
+
         @wraps(fn)
-        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+        def sync_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             binder = self.binder(self.injecting)
             # А вот тут можно например сделать atomic, что бы все вызовы сервисной функции всегда проходил в транзакции
             with binder:
@@ -54,7 +57,9 @@ class Module(Generic[M, B]):
             async with binder:
                 return await fn(binder, *args, **kwargs)
 
-        return async_wrapper if iscoroutine(fn) else wrapper
+        wrapper = async_wrapper if iscoroutine(fn) else sync_wrapper
+        wrapper.__bind__ = True
+        return wrapper
 
     def __class_getitem__(cls, params: tuple[Any, type[Bind]]) -> Self:
         _, binder = params

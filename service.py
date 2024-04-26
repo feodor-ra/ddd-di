@@ -15,3 +15,10 @@ async def bar(bind: Repo, a: int, b: str) -> float:
     # Тут будет ошибка потому что модуль в репозитории не был указан явно
     bind.article.publish(uuid4())
 
+
+
+# так нельзя только один инжект на функцию -> RuntimeError
+# @repository('article')
+# @repository('author')
+# def foo(bind_1: Repo, bind_2: Repo, b):
+#     ...
